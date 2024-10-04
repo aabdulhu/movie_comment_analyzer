@@ -61,7 +61,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor, BaggingRegressor, HistGradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, Lasso, ElasticNet, RidgeCV, HuberRegressor
-#from sklearn.tree import DecisionTreeRegressor
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.metrics import mean_squared_error,r2_score, mean_absolute_error,make_scorer
 
