@@ -65,6 +65,14 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.metrics import mean_squared_error,r2_score, mean_absolute_error,make_scorer
 
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+
+nltk.download('all')
+
 def adjr2(y_test, y_pred):
 
   #display adjusted R-squared
@@ -177,70 +185,6 @@ selected_features = ['TrailerPublishYear','TrailerPublishDays','TrailerDuration'
 'RatioDisgust', 'RatioAsian', 'RatioIndian', 'RatioBlack', 'RatioMiddle','RatioHispanic', 'TotalComments'
 ]
 
-# print(df['TrailerPublishYear'].value_counts())
-# print(df)
-# df =  df[df["TrailerPublishYear"] <= 2016]
-# df =  df[df["TrailerPublishYear"] == 2016]
-
-# print(df['TrailerPublishYear'].value_counts())
-
-
-# print(np.count_nonzero((0 < df['TotalComments']) & (df['TotalComments'] <= 1)))
-# print(np.count_nonzero((1 < df['TotalComments']) & (df['TotalComments'] <= 5)))
-# print(np.count_nonzero((5 < df['TotalComments']) & (df['TotalComments'] <= 10)))
-# print(np.count_nonzero((10 < df['TotalComments']) & (df['TotalComments'] <= 50)))
-# print(np.count_nonzero((50 < df['TotalComments']) & (df['TotalComments'] <= 100)))
-# print(np.count_nonzero((100 < df['TotalComments']) & (df['TotalComments'] <= 200)))
-# print(np.count_nonzero((200 < df['TotalComments']) & (df['TotalComments'] <= 300)))
-# print(np.count_nonzero((300 < df['TotalComments']) & (df['TotalComments'] <= 400)))
-# print(np.count_nonzero((400 < df['TotalComments']) & (df['TotalComments'] <= 500)))
-# print(np.count_nonzero((500 < df['TotalComments']) & (df['TotalComments'] <= 1000)))
-# print(np.count_nonzero((1000 < df['TotalComments']) ))
-
-# df['TotalComments'] = np.where((0 < df['TotalComments']) & (df['TotalComments'] <= 1), 1, df['TotalComments'])
-# df['TotalComments'] = np.where((1 < df['TotalComments']) & (df['TotalComments'] <= 5), 2, df['TotalComments'])
-# df['TotalComments'] = np.where((5 < df['TotalComments']) & (df['TotalComments'] <= 10), 3, df['TotalComments'])
-# df['TotalComments'] = np.where((10 < df['TotalComments']) & (df['TotalComments'] <= 50), 4, df['TotalComments'])
-# df['TotalComments'] = np.where((50 < df['TotalComments']) & (df['TotalComments'] <= 100), 5, df['TotalComments'])
-# df['TotalComments'] = np.where((100 < df['TotalComments']) & (df['TotalComments'] <= 200), 6, df['TotalComments'])
-# df['TotalComments'] = np.where((200 < df['TotalComments']) & (df['TotalComments'] <= 300), 7, df['TotalComments'])
-# df['TotalComments'] = np.where((300 < df['TotalComments']) & (df['TotalComments'] <= 400), 8, df['TotalComments'])
-# df['TotalComments'] = np.where((400 < df['TotalComments']) & (df['TotalComments'] <= 500), 9, df['TotalComments'])
-# df['TotalComments'] = np.where((500 < df['TotalComments']) & (df['TotalComments'] <= 1000), 10, df['TotalComments'])
-# df['TotalComments'] = np.where((df['TotalComments'] > 1000), 11, df['TotalComments'])
-
-# print(type(df['TotalComments']))
-# df['TotalComments'] = pd.cut(df['TotalComments'], bins=[0,1,5,10,50,100,200,300,400,500,1000,1000000], labels=[1,2,3,4,5,6,7,8,9,10,11])
-# print(type(df['TotalComments']))
-
-# df['TotalComments']= pd.DataFrame(df.TotalComments)
-
-# print(type(df['TotalComments'].to_numeric()))
-# print(df['TotalComments'].value_counts())
-# df['TotalComments'] = np.log10(df['TotalComments']+1)
-
-# plt.hist(df['TotalComments'], edgecolor="red", bins=range(0, 500)) 
-# plt.show() 
-
-# exit([status])
-
-# cd_append.to_csv('full_comments.csv', index=False)
-# cd_append=cd_append.drop_duplicates()
-
-# print(len(cd_append['CommentID'])-len(cd_append['CommentID'].drop_duplicates()))
-
-
-# exit([status])
-
-# print("Unique Movies/Commentsedit: ", len(pd.unique(cd_append['MovieLink'])))
-# print("Unique Movies/Comments29: ", len(pd.unique(cd1['MovieLink'])))
-# print("Unique Movies/Final DS: ", len(pd.unique(df['Movie_Link'])))
-# df_z = df[df['TotalComments']==1]
-# print(len(df_z))
-
-# range(len(df['Movie_Link']))
-
-
 cd2 = pd.read_csv("Comments\FilteredComments2.csv")
 cd3 = pd.read_csv("Comments\FilteredComments3.csv")
 cd4 = pd.read_csv("Comments\FilteredComments4.csv")
@@ -259,14 +203,67 @@ cd15= pd.read_csv("Comments\FilteredComments15.csv")
 cd_append = pd.concat([cd2, cd3, cd4, cd5, cd6, cd7, cd8, cd9, cd10, cd11, cd12, cd13, cd14, cd15], ignore_index=True)
 cd_append = cd_append.drop_duplicates()
 
+# movie_comments = cd_append[cd_append.MovieLink == "https://www.imdb.com/title/tt2735292/?ref_=adv_li_tt"]
+
+# create preprocess_text function
+def preprocess_text(text):
+    # Tokenize the text
+    tokens = word_tokenize(text.lower())
+    # Remove stop words
+    filtered_tokens = [token for token in tokens if token not in stopwords.words('english')]
+    # Lemmatize the tokens
+    lemmatizer = WordNetLemmatizer()
+    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in filtered_tokens]
+    # Join the tokens back into a string
+    processed_text = ' '.join(lemmatized_tokens)
+    return processed_text
+
+# initialize NLTK sentiment analyzer
+analyzer = SentimentIntensityAnalyzer()
+
+# create get_sentiment function
+def get_sentiment(text):
+    scores = analyzer.polarity_scores(text)
+    sentiment = 1 if scores['pos'] > 0 else 0
+    return sentiment
+
+
+df['Sentiment_mean'] = 0
+df['PN_ratio'] = 0
+
 for x in range(len(df['Movie_Link'])):
-    #print(df['Movie_Link'][x])
-    if ( len(cd_append[cd_append.MovieLink == df['Movie_Link'][x]]) - df['TotalComments'][x] != 0 ):
-        print("MoveLink, Counts in CommentDB, Count in FinalDatabase", df['Movie_Link'][x], len(cd_append[cd_append.MovieLink == df['Movie_Link'][x]]), df['TotalComments'][x],)
 
-exit([status])
+    cd_append_comments = cd_append[cd_append.MovieLink == df['Movie_Link'][x]]
+    cd_append_comments = cd_append_comments.reset_index()
 
+    cd_append_comments['Comments_pro'] = cd_append_comments['Comments'].apply(preprocess_text)
+    cd_append_comments['Sentiment'] = cd_append_comments['Comments_pro'].apply(get_sentiment)
+    df['Sentiment_mean'][x] = cd_append_comments['Sentiment'].mean()
 
+    positive_comment = len(cd_append_comments[cd_append_comments['Sentiment'] == 1])
+    negative_comment = len(cd_append_comments[cd_append_comments['Sentiment'] == 0])
+    
+    if negative_comment == 0:
+        negative_comment = 1
+        print("NEGATIVE_COMMENT ZERO")
+
+    PN_ratio = positive_comment/negative_comment
+
+    if(df['TotalComments'][x] <= 1000):
+        df['PN_ratio'][x] = PN_ratio
+    elif(df['TotalComments'][x] > 5000 ):
+        df['PN_ratio'][x] = PN_ratio*4
+    else:
+        df['PN_ratio'][x] = PN_ratio*2
+
+    print(x, df['TotalComments'][x],positive_comment,negative_comment, PN_ratio, df['PN_ratio'][x])
+    
+
+df.to_csv("Sentiments.csv")
+
+df['TotalComments'] = df['PN_ratio']
+
+# exit([status])
 
 
 # Select only the desired features
@@ -327,8 +324,6 @@ df_cleaned = remove_outliers_zscore(df)
 
 # Print the cleaned DataFrame
 print(df_cleaned.head())
-
-
 
 print(df_cleaned)
 
@@ -411,11 +406,12 @@ if df['TotalComments'].skew() > 1:
     # df_transformed['TotalComments'] = np.log1p(df['TotalComments'])
     df_transformed['TotalComments'], _ = stats.boxcox(df['TotalComments'] + 1)
 
-dcorr = df_transformed.corr()
-dcorr.to_excel('corr-matrix.xlsx', index=False)
+# dcorr = df_transformed.corr()
+# dcorr.to_excel('corr-matrix.xlsx', index=False)
 
 # Define the target variable
 y = df_transformed['TotalComments'].values
+
 
 # Function to train and evaluate a model
 def train_and_evaluate_model(features, model_name):
