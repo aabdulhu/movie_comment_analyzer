@@ -70,8 +70,22 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
+from textblob import TextBlob
+from textblob.sentiments import NaiveBayesAnalyzer
+import seaborn as sns
+import pandas as pd
+import numpy as np
+from scipy import stats
+import numpy as np
+import pandas as pd
+from scipy import stats
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-nltk.download('all')
+# nltk.download('all')
 
 def adjr2(y_test, y_pred):
 
@@ -203,6 +217,21 @@ cd15= pd.read_csv("Comments\FilteredComments15.csv")
 cd_append = pd.concat([cd2, cd3, cd4, cd5, cd6, cd7, cd8, cd9, cd10, cd11, cd12, cd13, cd14, cd15], ignore_index=True)
 cd_append = cd_append.drop_duplicates()
 
+
+# movie_comments = cd_append[cd_append.MovieLink == "https://www.imdb.com/title/tt2735292/?ref_=adv_li_tt"]
+
+# movie_comments["Sentiment"] = '0'
+
+# for k in movie_comments['Comments']:
+#         blob = TextBlob(k)
+#         print(k, blob.sentiment, blob.sentiment.polarity)
+
+
+
+# movie_comments.to_csv("Sentiments.csv")
+
+# exit([status])
+
 # movie_comments = cd_append[cd_append.MovieLink == "https://www.imdb.com/title/tt2735292/?ref_=adv_li_tt"]
 
 # create preprocess_text function
@@ -236,34 +265,50 @@ for x in range(len(df['Movie_Link'])):
     cd_append_comments = cd_append[cd_append.MovieLink == df['Movie_Link'][x]]
     cd_append_comments = cd_append_comments.reset_index()
 
-    cd_append_comments['Comments_pro'] = cd_append_comments['Comments'].apply(preprocess_text)
-    cd_append_comments['Sentiment'] = cd_append_comments['Comments_pro'].apply(get_sentiment)
-    df['Sentiment_mean'][x] = cd_append_comments['Sentiment'].mean()
+    # cd_append_comments['Comments_pro'] = cd_append_comments['Comments'].apply(preprocess_text)
+    # cd_append_comments['Sentiment'] = cd_append_comments['Comments_pro'].apply(get_sentiment)
 
-    positive_comment = len(cd_append_comments[cd_append_comments['Sentiment'] == 1])
-    negative_comment = len(cd_append_comments[cd_append_comments['Sentiment'] == 0])
+    sentiment = 0
+    pos_sentiment = 0
+    neg_sentiment = 0
+    sentiment_ratio = 0
+
+    for k in cd_append_comments['Comments']:
+            blob = TextBlob(k)
+            sentiment = blob.sentiment.polarity
+            if (sentiment>=0):
+                pos_sentiment +=1
+            else:
+                neg_sentiment +=1
+
+    # df['Sentiment_mean'][x] = cd_append_comments['Sentiment'].mean()
+
+    # positive_comment = len(cd_append_comments[cd_append_comments['Sentiment'] == 1])
+    # negative_comment = len(cd_append_comments[cd_append_comments['Sentiment'] == 0])
     
-    if negative_comment == 0:
-        negative_comment = 1
+    if neg_sentiment == 0:
+        neg_sentiment = 1
         print("NEGATIVE_COMMENT ZERO")
 
-    PN_ratio = positive_comment/negative_comment
+    PN_ratio = np.float64(pos_sentiment/neg_sentiment) 
 
-    if(df['TotalComments'][x] <= 1000):
-        df['PN_ratio'][x] = PN_ratio
-    elif(df['TotalComments'][x] > 5000 ):
-        df['PN_ratio'][x] = PN_ratio*4
+    if(df.loc[x, "TotalComments"] <= 500):
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*1)
+    elif(df.loc[x, "TotalComments"] > 500 and df.loc[x, "TotalComments"] <= 1000 ):
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*2)
+    elif(df.loc[x, "TotalComments"] > 1000 and df.loc[x, "TotalComments"] <= 2000 ):
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*3)
     else:
-        df['PN_ratio'][x] = PN_ratio*2
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*4)
 
-    print(x, df['TotalComments'][x],positive_comment,negative_comment, PN_ratio, df['PN_ratio'][x])
+    print(x, df.loc[x, "TotalComments"],pos_sentiment,neg_sentiment, np.float64(PN_ratio), df.loc[x, "PN_ratio"])
     
 
 df.to_csv("Sentiments.csv")
 
 df['TotalComments'] = df['PN_ratio']
 
-# exit([status])
+
 
 
 # Select only the desired features
@@ -273,32 +318,9 @@ df_numer=df[selected_numer_features]
 print(df.head())
 
 
-"""# DPE: Getting rid of outliers
+#Discover outliers with mathematical function Z-Score-
+# sns.boxplot(x=df['TotalComments'])
 
-Discover outliers with mathematical function
-Z-Score-
-
-Wikipedia Definition
-
-The Z-score is the signed number of standard deviations by which the value of an observation or data point is above the mean value of what is being observed or measured.
-
-The intuition behind Z-score is to describe any data point by finding their relationship with the Standard Deviation and Mean of the group of data points. Z-score is finding the distribution of data where mean is 0 and standard deviation is 1 i.e. normal distribution.
-
-You must be wondering that, how does this help in identifying the outliers? Well, while calculating the Z-score we re-scale and center the data and look for data points which are too far from zero. These data points which are way too far from zero will be treated as the outliers. In most of the cases a threshold of 3 or -3 is used i.e if the Z-score value is greater than or less than 3 or -3 respectively, that data point will be identified as outliers.
-
-We will use Z-score function defined in scipy library to detect the outliers.
- Method discussed in https://towardsdatascience.com/ways-to-detect-and-remove-the-outliers-404d16608dba
-
- remove or filter the outliers and get the clean data. This can be done with
-just one line code as we have already calculated the Z-score.
-"""
-
-import seaborn as sns
-sns.boxplot(x=df['TotalComments'])
-
-import pandas as pd
-import numpy as np
-from scipy import stats
 
 # Function to identify and exclude dummy variables
 def get_numerical_non_dummy_cols(df):
@@ -334,19 +356,8 @@ df_cleaned.info()
 
 """# Linear regression - transformed skewed numerical features"""
 
-import numpy as np
-import pandas as pd
-from scipy import stats
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-import statsmodels.api as sm
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 # Assuming df_cleaned is your DataFrame after removing outliers
 df = df_cleaned
-
-
 
 # Define the feature sets (as provided in the question)
 all_features = [
@@ -422,6 +433,10 @@ def train_and_evaluate_model(features, model_name):
     model = LinearRegression()
     model.fit(X, y)
 
+    # r_sq = model.score(X, y)
+    # print("For features: ",features)
+    # print("R_squared: ",r_sq)
+
     # Predict and evaluate on the same data
     y_pred = model.predict(X)
 
@@ -459,14 +474,14 @@ def train_and_evaluate_model(features, model_name):
 
 # List of models and their corresponding features
 models = [
-    {'name': 'all', 'features': all_features},
-    {'name': 'cont', 'features': cont_features},
-    {'name': 'cont_fn', 'features': cont_fn_features},
-    {'name': 'cont_fs', 'features': cont_fs_features},
-    {'name': 'cont_gender', 'features': cont_gender_features},
-    {'name': 'cont_age', 'features': cont_age_features},
-    {'name': 'cont_emo', 'features': cont_emo_features},
-    {'name': 'cont_race', 'features': cont_race_features}
+    {'name': 'all', 'features': all_features}
+    # {'name': 'cont', 'features': cont_features},
+    # {'name': 'cont_fn', 'features': cont_fn_features},
+    # {'name': 'cont_fs', 'features': cont_fs_features},
+    # {'name': 'cont_gender', 'features': cont_gender_features},
+    # {'name': 'cont_age', 'features': cont_age_features},
+    # {'name': 'cont_emo', 'features': cont_emo_features},
+    # {'name': 'cont_race', 'features': cont_race_features}
 ]
 
 
@@ -513,7 +528,7 @@ latex_table = excel_df.to_latex(index=False)
 with open('regression_results.tex', 'w') as f:
     f.write(latex_table)
 
-print(latex_table)
+# print(latex_table)
 
 df.shape
 
