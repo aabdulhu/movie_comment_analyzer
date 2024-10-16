@@ -217,6 +217,7 @@ def get_sentiment(text):
 df['Sentiment_mean'] = 0
 df['PN_ratio'] = 0
 
+# len(df['Movie_Link'])
 for x in range(len(df['Movie_Link'])):
 
     cd_append_comments = cd_append[cd_append.MovieLink == df['Movie_Link'][x]]
@@ -231,46 +232,43 @@ for x in range(len(df['Movie_Link'])):
     neg_sentiment = 0
     sentiment_ratio = 0
 
+    comment_counter=0
+
     #Blob stuff
     for k in cd_append_comments['Comments']:
             blob = TextBlob(k)
             sentiment = blob.sentiment.polarity
-            if (sentiment>=0):
-                pos_sentiment +=1
-            else:
-                neg_sentiment +=1
 
-    #Vader stuff
-    # for k in cd_append_comments['Comments']:
-    #         s_score = sentimentVader.polarity_scores(k)
-    #         sentiment = s_score['compound']
-    #         if (sentiment>0.05):
-    #             pos_sentiment +=1
-    #         elif (sentiment<0.05):
-    #             neg_sentiment +=1
-    
+            # print(k, blob.sentiment)
 
+            # cd_append_comments.loc[comment_counter, "Blob_sentiment"] = sentiment
+            # print(k, sentiment)
+            # comment_counter +=1
+
+            if (sentiment>0.05):
+                pos_sentiment = pos_sentiment + blob.sentiment.subjectivity
+            elif (sentiment<0.05):
+                neg_sentiment = neg_sentiment + blob.sentiment.subjectivity
+   
     if neg_sentiment == 0:
         neg_sentiment = 1
         print("NEGATIVE_COMMENT ZERO")
 
-    df.loc[x, "PN_ratio"] = np.float64(pos_sentiment) 
+    PN_ratio = np.float64(pos_sentiment/(neg_sentiment+pos_sentiment))
 
-    # PN_ratio = np.float64(pos_sentiment) 
-
-    # if(df.loc[x, "TotalComments"] <= 500):
-    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*1)
-    # elif(df.loc[x, "TotalComments"] > 500 and df.loc[x, "TotalComments"] <= 1000 ):
-    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*2)
-    # elif(df.loc[x, "TotalComments"] > 1000 and df.loc[x, "TotalComments"] <= 2000 ):
-    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*3)
-    # else:
-    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*4)
+    if(df.loc[x, "TotalComments"] <= 500):
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*1)
+    elif(df.loc[x, "TotalComments"] > 500 and df.loc[x, "TotalComments"] <= 1000 ):
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*2)
+    elif(df.loc[x, "TotalComments"] > 1000 and df.loc[x, "TotalComments"] <= 2000 ):
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*4)
+    else:
+        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*8)
 
     print(x, df.loc[x, "TotalComments"],pos_sentiment,neg_sentiment, df.loc[x, "PN_ratio"])
     
 
-df.to_csv("Sentiments.csv")
+# df.to_csv("Sentiments.csv")
 
 df['TotalComments'] = df['PN_ratio']
 
