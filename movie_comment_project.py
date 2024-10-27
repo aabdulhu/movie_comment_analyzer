@@ -55,6 +55,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 sentimentVader = SentimentIntensityAnalyzer()
+import argparse
+words = set(nltk.corpus.words.words())
 
 # nltk.download('all')
 
@@ -70,7 +72,7 @@ def adjr2(y_test, y_pred):
 
 
 # Read the dataset
-df = pd.read_csv("FinalDataset.csv")
+df = pd.read_csv("FinalDataset_English.csv")
 df.info()
 
 # Dimensions of the dataset
@@ -205,13 +207,49 @@ def get_sentiment(text):
     sentiment = 1 if scores['pos'] > 0 else 0
     return sentiment
 
+from google.cloud import language
+
+def analyze_text_sentiment(text: str) -> language.AnalyzeSentimentResponse:
+    client = language.LanguageServiceClient()
+    document = language.Document(
+        content=text,
+        type_=language.Document.Type.PLAIN_TEXT,
+    )
+    return client.analyze_sentiment(document=document)
+
+def show_text_sentiment(response: language.AnalyzeSentimentResponse):
+
+    columns = ["score", "sentence"]
+    data = [(s.sentiment.score, s.text.content) for s in response.sentences]
+    df_sentence = pd.DataFrame(columns=columns, data=data)
+
+    sentiment = response.document_sentiment
+    columns = ["score", "magnitude", "language"]
+    data = [(sentiment.score, sentiment.magnitude, response.language)]
+    # df_document = pd.DataFrame(columns=columns, data=data)
+
+    # format_args = dict(index=False, tablefmt="presto", floatfmt="+.1f")
+    # print(f"At sentence level:\n{df_sentence.to_markdown(**format_args)}")
+    # print()
+    # print(f"At document level:\n{df_document.to_markdown(**format_args)}")
+    return sentiment.score, sentiment.magnitude
+    
+
+# Input
+# text = "Hello Здесь снималась мая BYE то я аааааа test here"
+
+# cd_append_comments = cd_append[cd_append.MovieLink == "https://www.imdb.com/title/tt2369205/?ref_=adv_li_tt"]
+# cd_append_comments = cd_append_comments.reset_index()
+
+# cd_append_comments = cd_append_comments['Comments']
+# print(cd_append_comments.to_string())
 
 
 
-# s_score = sentiment.polarity_scores("The book was a perfect balance between wrtiting style and plot.")
+# # sent = "Io andiamo to the beach with my amico."
+# print(" ".join(w for w in nltk.wordpunct_tokenize(cd_append_comments.to_string()) \
+#          if w.lower() in words or not w.isalpha()))
 
-# print(s_score)
-# print(s_score['compound'])
 # sys.exit()
 
 df['Sentiment_mean'] = 0
@@ -223,49 +261,54 @@ for x in range(len(df['Movie_Link'])):
     cd_append_comments = cd_append[cd_append.MovieLink == df['Movie_Link'][x]]
     cd_append_comments = cd_append_comments.reset_index()
 
-    #NLTK stuff
-    # cd_append_comments['Comments_pro'] = cd_append_comments['Comments'].apply(preprocess_text)
-    # cd_append_comments['Sentiment'] = cd_append_comments['Comments_pro'].apply(get_sentiment)
-
     sentiment = 0
     pos_sentiment = 0
     neg_sentiment = 0
     sentiment_ratio = 0
 
-    comment_counter=0
+
+    # print(cd_append_comments['Comments'].to_string())
+    # print(cd_append_comments['Comments'].to_string())
+
+    text = " ".join(w for w in nltk.wordpunct_tokenize(cd_append_comments['Comments'].to_string()) \
+         if w.lower() in words or not w.isalpha())
+
+    analyze_sentiment_response = analyze_text_sentiment(text)
+
+    # analyze_sentiment_response = analyze_text_sentiment(cd_append_comments['Comments'].to_string())
+
+    sentiment_s, sentiment_m = show_text_sentiment(analyze_sentiment_response)
+
+    df.loc[x, "PN_ratio"] = sentiment_s*sentiment_m
+    print(x, df['Movie_Link'][x], df.loc[x, "TotalComments"],sentiment_s, sentiment_m, df.loc[x, "PN_ratio"])
 
     #Blob stuff
-    for k in cd_append_comments['Comments']:
-            blob = TextBlob(k)
-            sentiment = blob.sentiment.polarity
+    # for k in cd_append_comments['Comments']:
 
-            # print(k, blob.sentiment)
+    #     blob = TextBlob(k)
+    #     sentiment = blob.sentiment.polarity
 
-            # cd_append_comments.loc[comment_counter, "Blob_sentiment"] = sentiment
-            # print(k, sentiment)
-            # comment_counter +=1
-
-            if (sentiment>0.05):
-                pos_sentiment = pos_sentiment + blob.sentiment.subjectivity
-            elif (sentiment<0.05):
-                neg_sentiment = neg_sentiment + blob.sentiment.subjectivity
+    #     if (sentiment>0.05):
+    #         pos_sentiment = pos_sentiment + blob.sentiment.subjectivity
+    #     elif (sentiment<0.05):
+    #         neg_sentiment = neg_sentiment + blob.sentiment.subjectivity
    
-    if neg_sentiment == 0:
-        neg_sentiment = 1
-        print("NEGATIVE_COMMENT ZERO")
+    # if neg_sentiment == 0:
+    #     neg_sentiment = 1
+    #     print("NEGATIVE_COMMENT ZERO")
 
-    PN_ratio = np.float64(pos_sentiment/(neg_sentiment+pos_sentiment))
+    # PN_ratio = np.float64(pos_sentiment/(neg_sentiment+pos_sentiment))
 
-    if(df.loc[x, "TotalComments"] <= 500):
-        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*1)
-    elif(df.loc[x, "TotalComments"] > 500 and df.loc[x, "TotalComments"] <= 1000 ):
-        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*2)
-    elif(df.loc[x, "TotalComments"] > 1000 and df.loc[x, "TotalComments"] <= 2000 ):
-        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*4)
-    else:
-        df.loc[x, "PN_ratio"] = np.float64(PN_ratio*8)
+    # if(df.loc[x, "TotalComments"] <= 500):
+    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*1)
+    # elif(df.loc[x, "TotalComments"] > 500 and df.loc[x, "TotalComments"] <= 1000 ):
+    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*2)
+    # elif(df.loc[x, "TotalComments"] > 1000 and df.loc[x, "TotalComments"] <= 2000 ):
+    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*4)
+    # else:
+    #     df.loc[x, "PN_ratio"] = np.float64(PN_ratio*8)
 
-    print(x, df.loc[x, "TotalComments"],pos_sentiment,neg_sentiment, df.loc[x, "PN_ratio"])
+    # print(x, df.loc[x, "TotalComments"],pos_sentiment,neg_sentiment, df.loc[x, "PN_ratio"])
     
 
 # df.to_csv("Sentiments.csv")
@@ -374,6 +417,8 @@ df_transformed = transform_skewed_features(df, skewed_features)
 if df['TotalComments'].skew() > 1:
     # df_transformed['TotalComments'] = np.sqrt(df['TotalComments'])
     # df_transformed['TotalComments'] = np.log1p(df['TotalComments'])
+
+    print(df_transformed['TotalComments'], df['TotalComments'].skew())
     df_transformed['TotalComments'], _ = stats.boxcox(df['TotalComments'] + 1)
 
 # dcorr = df_transformed.corr()
